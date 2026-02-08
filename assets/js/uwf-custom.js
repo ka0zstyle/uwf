@@ -43,7 +43,6 @@
 
   // Sticky header on scroll with optimized performance
   let ticking = false;
-  let lastScrollTop = 0;
   
   function updateHeader() {
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -58,7 +57,6 @@
       $('#scroll-to-top').removeClass('visible').css('display', 'none');
     }
     
-    lastScrollTop = scrollTop;
     ticking = false;
   }
   

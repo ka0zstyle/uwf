@@ -642,7 +642,9 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     justify-content: space-between;
   }
 
-  /* Contenedor del menú con efecto de aparición optimizado */
+  /* Contenedor del menú con efecto de aparición optimizado 
+   * Removed scaleY and clip-path for better performance on mobile devices
+   * scaleY causes expensive repaints, simple translateY is GPU-accelerated */
   .header-area .main-nav .nav {
     float: none;
     width: 100%;
@@ -696,6 +698,9 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     border-top: 1px solid rgba(255, 255, 255, 0.12);
   }
 
+  /* Items con efecto cascada optimizado
+   * Reduced transform distance from -16px to -8px for smoother, less jarring animation
+   * This provides adequate visual feedback while improving performance */
   .header-area .main-nav .nav li {
     width: 100%;
     background: transparent;
