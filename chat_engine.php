@@ -143,43 +143,16 @@ if (is_array($update) && isset($update['message'])) {
     }
     
     if ($chat_id_incoming == TG_ADMIN_ID) {
+        // Simplified: Always send to the last user who sent a message
         $target_email = '';
-        $admin_message = '';
+        $admin_message = $reply_text;
         
-        // Method 1: Parse email:message format (e.g., "user@example.com:Hello")
-        if (strpos($reply_text, ':') !== false) {
-            $parts = explode(':', $reply_text, 2);
-            $maybeEmail = trim($parts[0]);
-            $maybeMsg = trim($parts[1]);
-            
-            if (filter_var($maybeEmail, FILTER_VALIDATE_EMAIL) && $maybeMsg !== '') {
-                $target_email = $maybeEmail;
-                $admin_message = $maybeMsg;
-                error_log("chat_engine: Using email:message format - {$target_email}");
-            }
+        $q = $db->query("SELECT email FROM chat_messages WHERE sender='user' ORDER BY created_at DESC LIMIT 1");
+        if ($q && ($row = $q->fetch_assoc())) {
+            $target_email = $row['email'];
+            error_log("chat_engine: Sending to last user: {$target_email}");
         }
-        
-        // Method 2: Reply to quoted message (check for reply_to_message)
-        if ($target_email === '' && isset($message['reply_to_message'])) {
-            $replied_to_text = $message['reply_to_message']['text'] ?? '';
-            // Extract email from the original notification (format: "👤 *Nuevo mensaje de:* `email@example.com`")
-            if (preg_match('/`([^`]+@[^`]+)`/', $replied_to_text, $matches)) {
-                $target_email = trim($matches[1]);
-                $admin_message = $reply_text;
-                error_log("chat_engine: Extracted email from reply_to_message: {$target_email}");
-            }
-        }
-        
-        // Method 3: Use the last user who sent a message (fallback)
-        if ($target_email === '') {
-            $q = $db->query("SELECT email FROM chat_messages WHERE sender='user' ORDER BY created_at DESC LIMIT 1");
-            if ($q && ($row = $q->fetch_assoc())) {
-                $target_email = $row['email'];
-                $admin_message = $reply_text;
-                error_log("chat_engine: Auto-assigned to last user: {$target_email}");
-            }
-            if ($q) $q->free();
-        }
+        if ($q) $q->free();
         
         // Insert admin message into database
         if ($target_email !== '' && $admin_message !== '') {
@@ -202,38 +175,9 @@ if (is_array($update) && isset($update['message'])) {
                 exit(json_encode(['ok' => false, 'error' => 'Database prepare failed']));
             }
         } else {
-            $error_msg = "Could not determine target_email or message is empty. Use format: email@example.com:Your message";
-            error_log("chat_engine: ✗ {$error_msg}");
-            
-            // Send helpful error message back to admin on Telegram
-            if (defined('TG_TOKEN') && defined('TG_ADMIN_ID')) {
-                $help_text = "❌ *Error:* No se pudo determinar el destinatario.\n\n";
-                $help_text .= "*Formas de responder:*\n";
-                $help_text .= "1️⃣ Responde citando el mensaje original\n";
-                $help_text .= "2️⃣ Usa formato: `email@example.com:Tu mensaje`\n";
-                $help_text .= "3️⃣ Envía el mensaje directamente (se enviará al último usuario)";
-                
-                $url = "https://api.telegram.org/bot" . TG_TOKEN . "/sendMessage";
-                $payload = [
-                    'chat_id' => TG_ADMIN_ID,
-                    'text' => $help_text,
-                    'parse_mode' => 'Markdown'
-                ];
-                
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-                curl_exec($ch);
-                curl_close($ch);
-            }
-            
+            error_log("chat_engine: ✗ No user found or message empty");
             http_response_code(200);
-            exit(json_encode(['ok' => false, 'error' => $error_msg]));
+            exit(json_encode(['ok' => false, 'error' => 'No recent user found']));
         }
     } else {
         error_log("chat_engine: Message from non-admin chat_id: {$chat_id_incoming}");
@@ -252,9 +196,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
     if ($stmt) { $stmt->bind_param("ss", $email, $msg); $stmt->execute(); $stmt->close(); }
     else { error_log("chat_engine POST insert prepare failed: " . $db->error); http_response_code(500); exit; }
 
-    // Send notification to Telegram with improved formatting
+    // Send notification to Telegram (simplified format)
     if (defined('TG_TOKEN') && defined('TG_ADMIN_ID')) {
-        $text_formatted = "👤 *Nuevo mensaje de:* `{$email}`\n\n" . $msg . "\n\n_Responde citando este mensaje o usa: {$email}:tu respuesta_";
+        $text_formatted = "👤 *Nuevo mensaje de:* `{$email}:`\n\n" . $msg;
         $url = "https://api.telegram.org/bot" . TG_TOKEN . "/sendMessage";
         $payload = [
             'chat_id' => TG_ADMIN_ID,
