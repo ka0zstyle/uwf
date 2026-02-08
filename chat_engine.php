@@ -112,14 +112,25 @@ if (isset($_GET['action']) && $_GET['action'] === 'load') {
     exit;
 }
 
-// Webhook Telegram (sin cambios relevantes)
+// Webhook Telegram/Instagram (improved with better logging and validation)
 $rawInput = file_get_contents("php://input");
 $update = json_decode($rawInput, true);
+
+// Log webhook data for debugging
+if ($rawInput) {
+    error_log("chat_engine webhook received: " . substr($rawInput, 0, 500));
+}
+
 if (is_array($update) && isset($update['message']) && isset($update['message']['chat']['id'])) {
     $chat_id_incoming = $update['message']['chat']['id'];
     $reply_text = trim((string)($update['message']['text'] ?? ''));
+    
+    error_log("chat_engine: Processing message from chat_id: {$chat_id_incoming}, text: " . substr($reply_text, 0, 100));
+    
     if (!empty($reply_text) && defined('TG_ADMIN_ID') && $chat_id_incoming == TG_ADMIN_ID) {
         $target_email = ''; $admin_message = '';
+        
+        // Try to parse email:message format first
         if (strpos($reply_text, ':') !== false) {
             $parts = explode(':', $reply_text, 2);
             $maybeEmail = trim($parts[0]); $maybeMsg = trim($parts[1]);
@@ -127,15 +138,32 @@ if (is_array($update) && isset($update['message']) && isset($update['message']['
                 $target_email = $maybeEmail; $admin_message = $maybeMsg;
             }
         }
+        
+        // If no email:message format, use the last user who sent a message
         if ($target_email === '') {
             $q = $db->query("SELECT email FROM chat_messages WHERE sender='user' ORDER BY created_at DESC LIMIT 1");
-            if ($q && ($row = $q->fetch_assoc())) { $target_email = $row['email']; $admin_message = $reply_text; }
+            if ($q && ($row = $q->fetch_assoc())) { 
+                $target_email = $row['email']; 
+                $admin_message = $reply_text;
+                error_log("chat_engine: Auto-assigned to last user: {$target_email}");
+            }
             if ($q) $q->free();
         }
+        
         if ($target_email !== '' && $admin_message !== '') {
             $stmtIns = $db->prepare("INSERT INTO chat_messages (email, message, sender, created_at) VALUES (?, ?, 'admin', NOW())");
-            if ($stmtIns) { $stmtIns->bind_param("ss", $target_email, $admin_message); $stmtIns->execute(); $stmtIns->close(); }
+            if ($stmtIns) { 
+                $stmtIns->bind_param("ss", $target_email, $admin_message); 
+                if ($stmtIns->execute()) {
+                    error_log("chat_engine: Admin message saved successfully for {$target_email}");
+                } else {
+                    error_log("chat_engine webhook execute failed: " . $stmtIns->error);
+                }
+                $stmtIns->close(); 
+            }
             else { error_log("chat_engine webhook insert prepare failed: " . $db->error); }
+        } else {
+            error_log("chat_engine: Could not determine target_email or message is empty");
         }
     }
     http_response_code(200);

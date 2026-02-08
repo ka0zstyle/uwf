@@ -65,16 +65,16 @@
             box = _ref[_i];
             this.applyStyle(box, true);
           }
-          window.addEventListener('scroll', this.scrollHandler, false);
-          window.addEventListener('resize', this.scrollHandler, false);
-          return this.interval = setInterval(this.scrollCallback, 50);
+          window.addEventListener('scroll', this.scrollHandler, { passive: true });
+          window.addEventListener('resize', this.scrollHandler, { passive: true });
+          return this.interval = setInterval(this.scrollCallback, 100);
         }
       }
     };
 
     WOW.prototype.stop = function() {
-      window.removeEventListener('scroll', this.scrollHandler, false);
-      window.removeEventListener('resize', this.scrollHandler, false);
+      window.removeEventListener('scroll', this.scrollHandler, { passive: true });
+      window.removeEventListener('resize', this.scrollHandler, { passive: true });
       if (this.interval != null) {
         return clearInterval(this.interval);
       }
