@@ -706,3 +706,50 @@
     transform: scale(1);
   }
 }
+
+/* Mobile performance optimization - Simplify animations on mobile */
+@media (max-width: 768px) {
+  /* Disable heavy animations on pricing cards for mobile performance */
+  .pricing-card {
+    animation: none;
+    will-change: auto;
+    transform: translateY(0);
+  }
+  
+  .pricing-card::before {
+    animation: none;
+    display: none;
+  }
+  
+  .pricing-card.featured {
+    animation: none;
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(43, 159, 230, 0.2);
+  }
+  
+  .pricing-card:hover {
+    transform: translateY(-5px) scale(1);
+    box-shadow: 0 15px 40px rgba(43, 159, 230, 0.3);
+  }
+  
+  .pricing-badge {
+    animation: none;
+  }
+  
+  .pricing-button::before {
+    display: none;
+  }
+  
+  .pricing-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(43, 159, 230, 0.4);
+  }
+  
+  .pricing-features li:hover {
+    padding-left: 40px;
+  }
+  
+  .pricing-features li:hover::before {
+    transform: scale(1.1);
+  }
+}
