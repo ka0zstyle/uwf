@@ -109,6 +109,7 @@ html, body {
   -ms-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 a {
@@ -272,11 +273,12 @@ header
   right: 0px;
   z-index: 100;
   height: 100px;
-  -webkit-transition: all .5s ease 0s;
-  -moz-transition: all .5s ease 0s;
-  -o-transition: all .5s ease 0s;
-  transition: all .5s ease 0s;
+  -webkit-transition: all .3s ease 0s;
+  -moz-transition: all .3s ease 0s;
+  -o-transition: all .3s ease 0s;
+  transition: all .3s ease 0s;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  will-change: transform, box-shadow;
 }
 
 .header-area .main-nav {
@@ -640,7 +642,9 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     justify-content: space-between;
   }
 
-  /* Contenedor del menú con efecto de aparición */
+  /* Contenedor del menú con efecto de aparición optimizado 
+   * Removed scaleY and clip-path for better performance on mobile devices
+   * scaleY causes expensive repaints, simple translateY is GPU-accelerated */
   .header-area .main-nav .nav {
     float: none;
     width: 100%;
@@ -660,23 +664,21 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     border-bottom-left-radius: 24px;
     border-bottom-right-radius: 24px;
 
-    /* Animación de entrada */
+    /* Animación de entrada optimizada */
     padding: 8px 0 12px;
-    overflow: hidden;              /* oculto al inicio para animar */
+    overflow: hidden;
     max-height: 0;
     opacity: 0;
-    transform: translateY(-12px) scaleY(0.92);
+    transform: translateY(-12px);
     transform-origin: top center;
-    clip-path: inset(0 0 100% 0 round 24px);
 
-    will-change: transform, opacity, max-height, clip-path;
+    will-change: transform, opacity, max-height;
     transition:
-      opacity .28s ease,
-      transform .48s cubic-bezier(0.22, 1, 0.36, 1),
-      max-height .50s ease,
-      clip-path .50s cubic-bezier(0.22, 1, 0.36, 1);
+      transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.25s ease,
+      max-height 0.35s ease;
     pointer-events: none;
-    z-index: 9999; /* asegúrate de que quede por encima del contenido */
+    z-index: 9999;
   }
 
   .header-area .main-nav .nav.active {
@@ -687,17 +689,8 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     overscroll-behavior: contain;
 
     opacity: 1;
-    transform: translateY(0) scaleY(1);
-    clip-path: inset(0 0 0 0 round 24px);
+    transform: translateY(0);
     pointer-events: auto;
-  }
-
-  /* Fallback si no soporta clip-path con 'round' */
-  @supports not (clip-path: inset(0 0 100% 0 round 24px)) {
-    .header-area .main-nav .nav,
-    .header-area .main-nav .nav.active {
-      clip-path: none;
-    }
   }
 
   /* Items con efecto cascada */
@@ -705,6 +698,9 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     border-top: 1px solid rgba(255, 255, 255, 0.12);
   }
 
+  /* Items con efecto cascada optimizado
+   * Reduced transform distance from -16px to -8px for smoother, less jarring animation
+   * This provides adequate visual feedback while improving performance */
   .header-area .main-nav .nav li {
     width: 100%;
     background: transparent;
@@ -713,10 +709,8 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     padding-right: 40px !important;
 
     opacity: 0;
-    transform: translateY(-16px);
-    transition:
-      transform .35s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity .35s ease;
+    transform: translateY(-8px);
+    transition: transform 0.25s ease, opacity 0.25s ease;
   }
 
   .header-area .main-nav .nav.active li {
@@ -724,15 +718,15 @@ MOBILE NAV APPEARANCE — Curved reveal with scroll
     transform: translateY(0);
   }
 
-  /* Stagger */
-  .header-area .main-nav .nav.active li:nth-child(1) { transition-delay: .06s; }
-  .header-area .main-nav .nav.active li:nth-child(2) { transition-delay: .10s; }
-  .header-area .main-nav .nav.active li:nth-child(3) { transition-delay: .14s; }
-  .header-area .main-nav .nav.active li:nth-child(4) { transition-delay: .18s; }
-  .header-area .main-nav .nav.active li:nth-child(5) { transition-delay: .22s; }
-  .header-area .main-nav .nav.active li:nth-child(6) { transition-delay: .26s; }
-  .header-area .main-nav .nav.active li:nth-child(7) { transition-delay: .30s; }
-  .header-area .main-nav .nav.active li:nth-child(8) { transition-delay: .34s; }
+  /* Simplified stagger for better performance */
+  .header-area .main-nav .nav.active li:nth-child(1) { transition-delay: 0.05s; }
+  .header-area .main-nav .nav.active li:nth-child(2) { transition-delay: 0.08s; }
+  .header-area .main-nav .nav.active li:nth-child(3) { transition-delay: 0.11s; }
+  .header-area .main-nav .nav.active li:nth-child(4) { transition-delay: 0.14s; }
+  .header-area .main-nav .nav.active li:nth-child(5) { transition-delay: 0.17s; }
+  .header-area .main-nav .nav.active li:nth-child(6) { transition-delay: 0.20s; }
+  .header-area .main-nav .nav.active li:nth-child(7) { transition-delay: 0.23s; }
+  .header-area .main-nav .nav.active li:nth-child(8) { transition-delay: 0.26s; }
 
   .header-area .main-nav .nav li a {
     height: 56px !important;            /* un poco más compacto para que quepan más */
@@ -1124,14 +1118,17 @@ Portfolio
   position: relative;
 }
 
-.our-portfolio .item:hover .hidden-content {
-  top: -100px;
-  opacity: 1;
-  visibility: visible;
-}
+/* Desktop hover effects */
+@media (hover: hover) and (pointer: fine) {
+  .our-portfolio .item:hover .hidden-content {
+    transform: translateY(-100px);
+    opacity: 1;
+    visibility: visible;
+  }
 
-.our-portfolio .item:hover .showed-content {
-  top: 90px;
+  .our-portfolio .item:hover .showed-content {
+    transform: translateY(90px);
+  }
 }
 
 .our-portfolio .hidden-content {
@@ -1141,11 +1138,18 @@ Portfolio
   border-radius: 20px;
   text-align: center;
   opacity: 0;
-  top: 0;
   visibility: hidden;
   position: absolute;
   z-index: 2;
-  transition: all 0.5s;
+  transform: translateY(0);
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s;
+}
+
+/* Remove will-change on mobile to reduce memory usage */
+@media (hover: hover) and (pointer: fine) {
+  .our-portfolio .hidden-content {
+    will-change: transform, opacity;
+  }
 }
 
 .our-portfolio .hidden-content:after {
@@ -1174,7 +1178,6 @@ Portfolio
 }
 
 .our-portfolio .showed-content {
-  top: 0px;
   position: relative;
   z-index: 3;
   background-color: #fff;
@@ -1182,7 +1185,15 @@ Portfolio
   padding: 50px;
   border-radius: 20px;
   box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
-  transition: all 0.5s;
+  transform: translateY(0);
+  transition: transform 0.3s ease-out;
+}
+
+/* Remove will-change on mobile to reduce memory usage */
+@media (hover: hover) and (pointer: fine) {
+  .our-portfolio .showed-content {
+    will-change: transform;
+  }
 }
 
 .our-portfolio .showed-content img {

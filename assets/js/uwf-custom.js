@@ -26,7 +26,7 @@
     }
   });
 
-  // Smooth scrolling for anchor links using event delegation
+  // Smooth scrolling for anchor links using event delegation with optimized performance
   $(document).on('click', 'a[href*="#"]:not([href="#"]):not([href="#0"])', function(event) {
     if (location.pathname.replace(/^\//, '') == this.pathname.replace(/^\//, '') 
         && location.hostname == this.hostname) {
@@ -36,21 +36,34 @@
         event.preventDefault();
         $('html, body').animate({
           scrollTop: target.offset().top - 80
-        }, 800);
+        }, 600, 'swing');
       }
     }
   });
 
-  // Sticky header on scroll
-  $(window).on('scroll', function() {
-    if ($(this).scrollTop() > 100) {
-      $('.header-area').addClass('sticky');
+  // Sticky header on scroll with optimized performance
+  let ticking = false;
+  
+  function updateHeader() {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    if (scrollTop > 100) {
+      $('.header-area').addClass('sticky background-header');
       // Show scroll to top button
       $('#scroll-to-top').addClass('visible').css('display', 'flex');
     } else {
-      $('.header-area').removeClass('sticky');
+      $('.header-area').removeClass('sticky background-header');
       // Hide scroll to top button
       $('#scroll-to-top').removeClass('visible').css('display', 'none');
+    }
+    
+    ticking = false;
+  }
+  
+  $(window).on('scroll', function() {
+    if (!ticking) {
+      window.requestAnimationFrame(updateHeader);
+      ticking = true;
     }
   });
 
