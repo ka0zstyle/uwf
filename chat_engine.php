@@ -112,81 +112,37 @@ if (isset($_GET['action']) && $_GET['action'] === 'load') {
     exit;
 }
 
-// Webhook Telegram/Instagram - Enhanced version with better validation
+// Webhook Telegram (sin cambios relevantes)
 $rawInput = file_get_contents("php://input");
 $update = json_decode($rawInput, true);
-
-// Log webhook data for debugging (only first 500 chars for security)
-if ($rawInput) {
-    error_log("chat_engine webhook received: " . substr($rawInput, 0, 500));
-}
-
-// Handle Telegram webhook
-if (is_array($update) && isset($update['message'])) {
-    $message = $update['message'];
-    $chat_id_incoming = $message['chat']['id'] ?? null;
-    $reply_text = trim((string)($message['text'] ?? ''));
-    
-    error_log("chat_engine: Processing message from chat_id: {$chat_id_incoming}, text: " . substr($reply_text, 0, 100));
-    
-    // Validate admin and message
-    if (!defined('TG_ADMIN_ID')) {
-        error_log("chat_engine: TG_ADMIN_ID not defined in secrets.php");
-        http_response_code(200); // Return 200 to prevent Telegram retries
-        exit(json_encode(['ok' => false, 'error' => 'TG_ADMIN_ID not configured']));
-    }
-    
-    if (empty($reply_text)) {
-        error_log("chat_engine: Empty message text received");
-        http_response_code(200);
-        exit(json_encode(['ok' => true, 'message' => 'Empty message ignored']));
-    }
-    
-    if ($chat_id_incoming == TG_ADMIN_ID) {
-        // Simplified: Always send to the last user who sent a message
-        $target_email = '';
-        $admin_message = $reply_text;
-        
-        $q = $db->query("SELECT email FROM chat_messages WHERE sender='user' ORDER BY created_at DESC LIMIT 1");
-        if ($q && ($row = $q->fetch_assoc())) {
-            $target_email = $row['email'];
-            error_log("chat_engine: Sending to last user: {$target_email}");
+if (is_array($update) && isset($update['message']) && isset($update['message']['chat']['id'])) {
+    $chat_id_incoming = $update['message']['chat']['id'];
+    $reply_text = trim((string)($update['message']['text'] ?? ''));
+    if (!empty($reply_text) && defined('TG_ADMIN_ID') && $chat_id_incoming == TG_ADMIN_ID) {
+        $target_email = ''; $admin_message = '';
+        if (strpos($reply_text, ':') !== false) {
+            $parts = explode(':', $reply_text, 2);
+            $maybeEmail = trim($parts[0]); $maybeMsg = trim($parts[1]);
+            if (filter_var($maybeEmail, FILTER_VALIDATE_EMAIL) && $maybeMsg !== '') {
+                $target_email = $maybeEmail; $admin_message = $maybeMsg;
+            }
         }
-        if ($q) $q->free();
-        
-        // Insert admin message into database
+        if ($target_email === '') {
+            $q = $db->query("SELECT email FROM chat_messages WHERE sender='user' ORDER BY created_at DESC LIMIT 1");
+            if ($q && ($row = $q->fetch_assoc())) { $target_email = $row['email']; $admin_message = $reply_text; }
+            if ($q) $q->free();
+        }
         if ($target_email !== '' && $admin_message !== '') {
             $stmtIns = $db->prepare("INSERT INTO chat_messages (email, message, sender, created_at) VALUES (?, ?, 'admin', NOW())");
-            if ($stmtIns) {
-                $stmtIns->bind_param("ss", $target_email, $admin_message);
-                if ($stmtIns->execute()) {
-                    error_log("chat_engine: ✓ Admin message saved successfully for {$target_email}");
-                    http_response_code(200);
-                    exit(json_encode(['ok' => true, 'email' => $target_email, 'message' => 'Message saved']));
-                } else {
-                    error_log("chat_engine: ✗ Execute failed: " . $stmtIns->error);
-                    http_response_code(200);
-                    exit(json_encode(['ok' => false, 'error' => 'Database execute failed']));
-                }
-                $stmtIns->close();
-            } else {
-                error_log("chat_engine: ✗ Prepare failed: " . $db->error);
-                http_response_code(200);
-                exit(json_encode(['ok' => false, 'error' => 'Database prepare failed']));
-            }
-        } else {
-            error_log("chat_engine: ✗ No user found or message empty");
-            http_response_code(200);
-            exit(json_encode(['ok' => false, 'error' => 'No recent user found']));
+            if ($stmtIns) { $stmtIns->bind_param("ss", $target_email, $admin_message); $stmtIns->execute(); $stmtIns->close(); }
+            else { error_log("chat_engine webhook insert prepare failed: " . $db->error); }
         }
-    } else {
-        error_log("chat_engine: Message from non-admin chat_id: {$chat_id_incoming}");
-        http_response_code(200);
-        exit(json_encode(['ok' => true, 'message' => 'Message from non-admin ignored']));
     }
+    http_response_code(200);
+    exit;
 }
 
-// POST Usuario -> Admin - Send notification to Telegram
+// POST Usuario -> Admin (sin cambios relevantes)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
     $email = trim((string)($_POST['email'] ?? ''));
     $msg = trim((string)($_POST['message'] ?? ''));
@@ -196,36 +152,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
     if ($stmt) { $stmt->bind_param("ss", $email, $msg); $stmt->execute(); $stmt->close(); }
     else { error_log("chat_engine POST insert prepare failed: " . $db->error); http_response_code(500); exit; }
 
-    // Send notification to Telegram (simplified format)
     if (defined('TG_TOKEN') && defined('TG_ADMIN_ID')) {
-        $text_formatted = "👤 *Nuevo mensaje de:* `{$email}:`\n\n" . $msg;
+        $text_formatted = "👤 *Nuevo mensaje de:* `{$email}`\n\n" . $msg;
         $url = "https://api.telegram.org/bot" . TG_TOKEN . "/sendMessage";
-        $payload = [
-            'chat_id' => TG_ADMIN_ID,
-            'text' => $text_formatted,
-            'parse_mode' => 'Markdown'
-        ];
-        
+        $payload = ['chat_id' => TG_ADMIN_ID, 'text' => $text_formatted, 'parse_mode' => 'Markdown'];
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
         $result = curl_exec($ch);
-        
-        if ($result === false) {
-            error_log("chat_engine: curl error sending to Telegram: " . curl_error($ch));
-        } else {
-            $response = json_decode($result, true);
-            if (isset($response['ok']) && $response['ok'] === false) {
-                error_log("chat_engine: Telegram API error: " . ($response['description'] ?? 'Unknown error'));
-            } else {
-                error_log("chat_engine: Message sent to Telegram successfully");
-            }
-        }
+        if ($result === false) { error_log("chat_engine: curl error sending to Telegram: " . curl_error($ch)); }
         curl_close($ch);
     }
 
