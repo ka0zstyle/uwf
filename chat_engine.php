@@ -227,7 +227,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
@@ -235,7 +236,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
         if ($result === false) { 
             error_log("chat_engine POST: ✗ cURL error - " . curl_error($ch)); 
         } else {
-            error_log("chat_engine POST: ✓ Telegram notification sent");
+            $response = json_decode($result, true);
+            if (isset($response['ok']) && $response['ok'] === true) {
+                error_log("chat_engine POST: ✓ Telegram notification sent successfully");
+            } else {
+                error_log("chat_engine POST: ✗ Telegram API error - " . ($response['description'] ?? 'Unknown error'));
+            }
         }
         curl_close($ch);
     } else {
