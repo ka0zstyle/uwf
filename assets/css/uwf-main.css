@@ -1100,8 +1100,35 @@ Services Style
   width: 90%;
 }
 
+/* Additional skill bars for dynamic skills */
+.our-services .fourth-bar span {
+  left: 84%;
+}
 
-/* 
+.our-services .fourth-bar .filled-bar {
+  width: 86%;
+}
+
+.our-services .fifth-bar span {
+  left: 88%;
+}
+
+.our-services .fifth-bar .filled-bar {
+  width: 90%;
+}
+
+/* Generic skill bar styling for dynamically added skills */
+.our-services .progress-skill-bar .filled-bar {
+  background: linear-gradient(105deg, #ff4d1e 0%, #ff2c6d 100%);
+  height: 6px;
+  border-radius: 3px;
+  margin-bottom: -6px;
+  position: relative;
+  z-index: 2;
+}
+
+
+/*
 ---------------------------------------------
 Portfolio
 --------------------------------------------- 
