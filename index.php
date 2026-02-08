@@ -14,6 +14,9 @@ elseif (isset($_COOKIE['uwf_lang']) && in_array($_COOKIE['uwf_lang'], ['en', 'es
 
 // Load language file
 require_once __DIR__ . '/lang/' . $current_lang . '.php';
+
+// Load skills loader
+require_once __DIR__ . '/skills_loader.php';
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $current_lang; ?>">
@@ -45,6 +48,7 @@ require_once __DIR__ . '/lang/' . $current_lang . '.php';
     <link rel="stylesheet" href="assets/css/animated.min.css" media="print" onload="this.media='all'; this.onload=null;">
     <link rel="stylesheet" href="assets/css/chat.min.css" media="print" onload="this.media='all'; this.onload=null;">
     <link rel="stylesheet" href="assets/css/language.min.css" media="print" onload="this.media='all'; this.onload=null;">
+    <link rel="stylesheet" href="assets/css/skills-manager.css" media="print" onload="this.media='all'; this.onload=null;">
     
     <!-- Noscript fallback for deferred CSS -->
     <noscript>
@@ -53,6 +57,7 @@ require_once __DIR__ . '/lang/' . $current_lang . '.php';
       <link rel="stylesheet" href="assets/css/animated.min.css">
       <link rel="stylesheet" href="assets/css/chat.min.css">
       <link rel="stylesheet" href="assets/css/language.min.css">
+      <link rel="stylesheet" href="assets/css/skills-manager.css">
     </noscript>
     
     <style>
@@ -252,31 +257,22 @@ require_once __DIR__ . '/lang/' . $current_lang . '.php';
             <h2><?php echo $lang['services_detail_title']; ?></h2>
             <p><?php echo htmlspecialchars($lang['services_detail_description']); ?></p>
           </div>
-          <div class="row">
+          <div class="row" id="skills-bars-container">
+            <?php 
+            $skills = loadSkills();
+            foreach ($skills as $index => $skill): 
+              $skillName = $current_lang === 'es' ? $skill['name_es'] : $skill['name_en'];
+              $skillClass = getSkillClass($index);
+            ?>
             <div class="col-lg-12">
-              <div class="first-bar progress-skill-bar">
-                <h4><?php echo htmlspecialchars($lang['services_skill_1']); ?></h4>
-                <span>84%</span>
+              <div class="<?php echo $skillClass; ?> progress-skill-bar">
+                <h4><?php echo htmlspecialchars($skillName); ?></h4>
+                <span><?php echo intval($skill['percentage']); ?>%</span>
                 <div class="filled-bar"></div>
                 <div class="full-bar"></div>
               </div>
             </div>
-            <div class="col-lg-12">
-              <div class="second-bar progress-skill-bar">
-                <h4><?php echo htmlspecialchars($lang['services_skill_2']); ?></h4>
-                <span>88%</span>
-                <div class="filled-bar"></div>
-                <div class="full-bar"></div>
-              </div>
-            </div>
-            <div class="col-lg-12">
-              <div class="third-bar progress-skill-bar">
-                <h4><?php echo htmlspecialchars($lang['services_skill_3']); ?></h4>
-                <span>94%</span>
-                <div class="filled-bar"></div>
-                <div class="full-bar"></div>
-              </div>
-            </div>
+            <?php endforeach; ?>
           </div>
         </div>
       </div>
@@ -677,6 +673,7 @@ require_once __DIR__ . '/lang/' . $current_lang . '.php';
   <script src="assets/js/imagesloaded.js" defer></script>
   <script src="assets/js/uwf-custom.js" defer></script>
   <script src="assets/js/chat.js" defer></script>
+  <script src="assets/js/skills-manager.js" defer></script>
 
 </body>
 </html>
